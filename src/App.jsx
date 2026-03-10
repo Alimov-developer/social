@@ -1,18 +1,17 @@
 import { Routes, Route } from "react-router-dom";
 import { useEffect } from "react";
-import Login from "./pages/Login/Login";
-import Register from "./pages/register/register";
+import Login from "./pages/login/Login";
+import Register from "./pages/register/Register";
 import Public from "./pages/public/Public";
 import Dashboard from "./pages/dashboard/Dashboard";
 
 import Home from "./pages/home/Home";
 import Chats from "./pages/home/Chats";
 import Profile from "./pages/home/Profile";
-import ProtectedRoute from "./pages/ProtectedRoute/ProtectedRoute";
+import ProtectedRoute from "./pages/protectedroute/ProtectedRoute";
 import ChatDetail from "./pages/home/ChatDetail";
 import Invites from "./pages/home/Invites";
 import ChatApp from "./pages/home/ChatApp";
-import Sidebar from "./pages/home/ChatActions";
 import ChatActions from "./pages/home/ChatActions";
 
 function App() {
