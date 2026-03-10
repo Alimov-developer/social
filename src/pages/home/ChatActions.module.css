@@ -1,0 +1,55 @@
+.sidebar{
+  width:260px;
+  height:100vh;
+  background:#0d1b3d;
+  padding:20px;
+  display:flex;
+  flex-direction:column;
+  gap:15px;
+}
+
+.plusBtn{
+  width:40px;
+  height:40px;
+  font-size:22px;
+  border:none;
+  border-radius:10px;
+  background:#3a6ff7;
+  color:white;
+  cursor:pointer;
+}
+
+.forms{
+  display:flex;
+  flex-direction:column;
+  gap:10px;
+}
+
+.row{
+  display:flex;
+  gap:8px;
+}
+
+.row input{
+  flex:1;
+  padding:8px;
+  border-radius:6px;
+  border:none;
+}
+
+.row button{
+  padding:8px 12px;
+  border:none;
+  border-radius:6px;
+  background:#7c5cff;
+  color:white;
+  cursor:pointer;
+}
+
+.menu{
+  margin-top:20px;
+  display:flex;
+  flex-direction:column;
+  gap:12px;
+  color:white;
+}

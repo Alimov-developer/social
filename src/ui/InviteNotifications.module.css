@@ -1,0 +1,78 @@
+.section {
+  margin-bottom: 32px;
+}
+
+.title {
+  margin-bottom: 12px;
+  font-size: 18px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.loading {
+  margin-top: 10px;
+  font-size: 14px;
+  color: #6b7280;
+}
+
+.muted {
+  margin-top: 6px;
+  font-size: 14px;
+  color: #9ca3af;
+}
+
+.inviteList {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  margin-bottom: 8px;
+}
+
+.inviteItem {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 14px 16px;
+  border-radius: 12px;
+  background: #f9fafb;
+  border: 1px solid #e5e7eb;
+}
+
+.inviteInfo {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.inviteTitle {
+  font-size: 15px;
+  font-weight: 600;
+  color: #111827;
+}
+
+.inviteMeta {
+  font-size: 13px;
+  color: #6b7280;
+}
+
+.button {
+  padding: 10px 16px;
+  border-radius: 10px;
+  border: none;
+  background: #6366f1;
+  color: white;
+  font-size: 14px;
+  font-weight: 500;
+  cursor: pointer;
+  transition: all 0.2s ease;
+}
+
+.button:hover {
+  background: #4f46e5;
+}
+
+.button:disabled {
+  background: #c7d2fe;
+  cursor: not-allowed;
+}
