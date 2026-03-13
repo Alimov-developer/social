@@ -1,4 +1,4 @@
-import { useNavigate } from "react-router-dom";
+import { useNavigate, useOutletContext } from "react-router-dom";
 import {
   useGetInvitesQuery,
   useAcceptInviteMutation,
@@ -7,6 +7,7 @@ import InviteNotifications from "../../ui/InviteNotifications";
 import styles from "./Invites.module.css";
 
 function Invites() {
+  const { t } = useOutletContext();
   const navigate = useNavigate();
   const { data: invitesData, isLoading } = useGetInvitesQuery();
   const [acceptInvite, { isLoading: isAcceptingInvite }] =
@@ -36,7 +37,7 @@ function Invites() {
     <div className={styles.container}>
       <header className={styles.header}>
         <button onClick={() => window.history.back()} className={styles.backBtn}>⬅</button>
-        <h2 className={styles.headerTitle}>Invites</h2>
+        <h2 className={styles.headerTitle}>{t.invites}</h2>
       </header>
       <InviteNotifications
         invites={invites}

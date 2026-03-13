@@ -9,10 +9,10 @@ import styles from "./Chats.module.css";
 import { useNavigate } from "react-router-dom";
 import ChatList from "./ChatList";
 
-function Chats({ searchQuery }) {
+function Chats({ searchQuery, t, unreadCounts }) {
   const navigate = useNavigate();
   const [menuOpen, setMenuOpen] = useState(false);
-  const [activeForm, setActiveForm] = useState(null); // 'create', 'join', 'invite'
+  const [activeForm, setActiveForm] = useState(null); 
 
   const [formData, setFormData] = useState({ title: "" });
   const [joinId, setJoinId] = useState("");
@@ -74,12 +74,12 @@ function Chats({ searchQuery }) {
   return (
     <div className={styles.container}>
       {(isLoading) && (
-        <div className={styles.loading}>Loading chats...</div>
+        <div className={styles.loading}>{t.chats}...</div>
       )}
 
       {filteredChats && (
         <div className={styles.chatListScroll}>
-          <ChatList chats={filteredChats} />
+          <ChatList chats={filteredChats} t={t} unreadCounts={unreadCounts} />
         </div>
       )}
 
@@ -89,20 +89,20 @@ function Chats({ searchQuery }) {
           <div className={styles.fabMenu}>
             {activeForm === 'create' && (
               <form onSubmit={handleCreate} className={styles.miniForm}>
-                <input autoFocus placeholder="Chat Title" value={formData.title} onChange={e => setFormData({ title: e.target.value })} className={styles.input} />
-                <button type="submit" disabled={isCreating} className={styles.button}>Create</button>
+                <input autoFocus placeholder={t.chatTitle} value={formData.title} onChange={e => setFormData({ title: e.target.value })} className={styles.input} />
+                <button type="submit" disabled={isCreating} className={styles.button}>{t.create}</button>
               </form>
             )}
             {activeForm === 'join' && (
               <form onSubmit={handleJoin} className={styles.miniForm}>
-                <input autoFocus placeholder="Chat ID" value={joinId} onChange={e => setJoinId(e.target.value)} className={styles.input} />
-                <button type="submit" disabled={isJoining} className={styles.button}>Join</button>
+                <input autoFocus placeholder={t.chatId} value={joinId} onChange={e => setJoinId(e.target.value)} className={styles.input} />
+                <button type="submit" disabled={isJoining} className={styles.button}>{t.join}</button>
               </form>
             )}
             {!activeForm && (
               <div className={styles.menuOptions}>
-                <button onClick={() => setActiveForm('create')} className={styles.menuOptionBtn}>✏️ Create Chat</button>
-                <button onClick={() => setActiveForm('join')} className={styles.menuOptionBtn}>🔗 Join Chat</button>
+                <button onClick={() => setActiveForm('create')} className={styles.menuOptionBtn}>✏️ {t.createChat}</button>
+                <button onClick={() => setActiveForm('join')} className={styles.menuOptionBtn}>🔗 {t.joinChat}</button>
               </div>
             )}
           </div>

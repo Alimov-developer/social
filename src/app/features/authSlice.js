@@ -5,19 +5,43 @@ const initialState = {
   token: localStorage.getItem("token") || localStorage.getItem("accessToken") || null,
 };
 
+if (initialState.user && !initialState.user.profilePic) {
+  const savedPic = localStorage.getItem('avatar_' + initialState.user.username);
+  if (savedPic) {
+    initialState.user.profilePic = savedPic;
+  }
+}
+
 const authSlice = createSlice({
   name: "auth",
   initialState,
   reducers: {
     getCredentials: (state, action) => {
-      state.user = action.payload.user;
+      let incomingUser = action.payload.user;
+      
+      // Retrieve saved avatar if backend response is missing it
+      if (incomingUser && incomingUser.username && !incomingUser.profilePic) {
+        const savedPic = localStorage.getItem('avatar_' + incomingUser.username);
+        if (savedPic) {
+          incomingUser.profilePic = savedPic;
+        }
+      }
+
+      state.user = incomingUser;
       state.token = action.payload.token || action.payload.accessToken || null;
 
       if (state.token) {
         localStorage.setItem("token", state.token);
         localStorage.setItem("accessToken", state.token);
       }
-      localStorage.setItem("user", JSON.stringify(state.user));
+      try {
+        if (incomingUser?.profilePic && incomingUser?.username) {
+          localStorage.setItem('avatar_' + incomingUser.username, incomingUser.profilePic);
+        }
+        localStorage.setItem("user", JSON.stringify(state.user));
+      } catch (err) {
+        console.error("Local storage quota exceeded or failed:", err);
+      }
     },
     logout: (state) => {
       state.user = null;

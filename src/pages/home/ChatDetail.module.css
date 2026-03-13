@@ -191,8 +191,8 @@
 }
 
 .myMessage {
-  background: var(--primary); /* Telegram default self-color */
-  color: white;
+  background: var(--my-message-bg); /* Theme-aware self-color */
+  color: var(--my-message-text);
   border-bottom-right-radius: 4px;
 }
 
@@ -217,7 +217,7 @@
 
 .timeLabel {
   font-size: 11px;
-  color: rgba(255,255,255,0.7);
+  color: var(--my-message-time);
   align-self: flex-end;
   margin-left: 10px;
   margin-top: 4px;
@@ -264,56 +264,189 @@
   color: white;
 }
 
-/* Input Form */
-.form {
+.inputArea {
   display: flex;
   align-items: center;
   gap: 12px;
-  padding: 16px 20px;
+  padding: 10px 16px;
   background: var(--bg-card);
   border-top: 1px solid var(--border);
 }
 
-.input {
-  flex: 1;
-  padding: 14px 20px;
-  border-radius: 20px;
-  border: 1px solid var(--border);
+.attachBtn {
+  background: transparent;
+  font-size: 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.emojiBtn {
+  background: transparent;
+  font-size: 24px;
+  color: var(--text-muted);
+  cursor: pointer;
+  padding: 8px;
+  border-radius: 50%;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  border: none;
+}
+
+.emojiBtn:hover {
   background: var(--bg-hover);
-  color: var(--text-main);
-  font-size: 15px;
-  outline: none;
+  color: var(--primary);
+}
+
+.attachBtn:hover {
+  background: var(--bg-hover);
+  color: var(--primary);
+}
+
+.form {
+  flex: 1;
+  display: flex;
+  align-items: center;
+  background: var(--bg-hover);
+  border-radius: 24px;
+  padding: 4px 12px;
+  border: 1px solid var(--border);
   transition: border-color 0.2s;
 }
 
-.input::placeholder {
-  color: var(--text-muted);
-}
-
-.input:focus {
+.form:focus-within {
   border-color: var(--primary);
 }
 
-.button {
-  padding: 14px 24px;
-  border-radius: 20px;
+.input {
+  flex: 1;
+  background: transparent;
+  border: none;
+  padding: 10px 8px;
+  color: var(--text-main);
+  font-size: 15px;
+  outline: none;
+}
+
+.sendButton {
   background: var(--primary);
   color: white;
+  padding: 8px 16px;
+  border-radius: 12px;
   font-weight: 600;
-  cursor: pointer;
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
+  font-size: 14px;
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  transition: all 0.2s;
   border: none;
-  font-size: 15px;
+  cursor: pointer;
 }
 
-.button:hover {
+.sendButton:hover {
   background: var(--primary-hover);
   transform: translateY(-2px);
-  box-shadow: 0 6px 20px rgba(var(--primary-rgb), 0.3);
+  box-shadow: 0 4px 12px rgba(var(--primary-rgb), 0.3);
 }
 
-.button:active {
-  transform: translateY(0) scale(0.98);
+.micButton {
+  background: transparent;
+  font-size: 20px;
+  color: var(--primary);
+  padding: 8px;
+  border-radius: 50%;
+  cursor: pointer;
+  transition: all 0.2s;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.micButton:hover {
+  background: rgba(var(--primary-rgb), 0.1);
+  transform: scale(1.1);
+}
+
+.recording {
+  color: var(--danger);
+  animation: pulse 1.5s infinite;
+}
+
+@keyframes pulse {
+  0% { transform: scale(1); opacity: 1; }
+  50% { transform: scale(1.2); opacity: 0.7; }
+  100% { transform: scale(1); opacity: 1; }
+}
+
+.audioWrapper {
+  margin-top: 6px;
+  width: 240px;
+}
+
+.audio {
+  width: 100%;
+  height: 40px;
+  outline: none;
+}
+
+.previewArea {
+  padding: 10px 16px;
+  background: var(--bg-card);
+  border-top: 1px solid var(--border);
+}
+
+.previewContainer {
+  position: relative;
+  display: inline-block;
+  max-width: 100%;
+}
+
+.previewImage {
+  max-width: 200px;
+  max-height: 200px;
+  border-radius: 8px;
+  display: block;
+}
+
+.cancelPreview {
+  position: absolute;
+  top: -8px;
+  right: -8px;
+  background: var(--danger);
+  color: white;
+  width: 24px;
+  height: 24px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 14px;
+  cursor: pointer;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.2);
+  border: none;
+}
+
+.voicePreview {
+  padding: 10px 20px;
+  background: var(--bg-hover);
+  border-radius: 12px;
+  color: var(--text-main);
+}
+
+.emojiPickerContainer {
+  position: absolute;
+  bottom: 80px;
+  left: 20px;
+  z-index: 1000;
+  box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+  border-radius: 8px;
 }
 
 .mediaWrapper {
@@ -321,17 +454,19 @@
   border-radius: 12px;
   overflow: hidden;
   box-shadow: 0 4px 12px rgba(0,0,0,0.3);
-  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  transition: all 0.3s ease;
   background: rgba(0,0,0,0.1);
   display: flex;
   justify-content: center;
   align-items: center;
   max-width: fit-content;
+  cursor: pointer;
 }
 
 .mediaWrapper:hover {
-  transform: scale(1.01);
+  transform: scale(1.02);
   box-shadow: 0 8px 24px rgba(0,0,0,0.4);
+  filter: brightness(1.1);
 }
 
 .media {

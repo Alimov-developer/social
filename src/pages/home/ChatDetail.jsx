@@ -1,11 +1,13 @@
 import styles from "./ChatDetail.module.css";
-import { useParams, useSearchParams, useLocation, useNavigate } from "react-router-dom";
+import { useParams, useSearchParams, useLocation, useNavigate, useOutletContext } from "react-router-dom";
 import { useSelector } from "react-redux";
-import { useEffect, useMemo, useRef, useState } from "react";
+import { useEffect, useMemo, useRef, useState, useCallback } from "react";
 import { createSocket, SOCKET_EVENTS } from "../../app/services/socket";
 import { useInviteToChatMutation, useEditMessageMutation, useDeleteMessageMutation, useGetChatMessagesQuery } from "../../app/services/chatApi";
+import EmojiPicker from 'emoji-picker-react';
 
 function ChatDetail() {
+  const { t } = useOutletContext();
   const [searchParams] = useSearchParams();
   const { chatId } = useParams();
   const location = useLocation();
@@ -15,12 +17,24 @@ function ChatDetail() {
   const user = useSelector((state) => state.auth?.user);
 
   const socketRef = useRef(null);
+  const fileInputRef = useRef(null);
   const [draft, setDraft] = useState("");
   const [messages, setMessages] = useState([]);
   const messagesEndRef = useRef(null);
 
   const [presence, setPresence] = useState("offline");
   const [onlineUsers, setOnlineUsers] = useState([]);
+
+  // Emoji state
+  const [showEmojiPicker, setShowEmojiPicker] = useState(false);
+
+  // Multimedia state
+  const [isRecording, setIsRecording] = useState(false);
+  const [pendingMedia, setPendingMedia] = useState(null); // Data URL
+  const [pendingMediaType, setPendingMediaType] = useState(null); // 'image' or 'voice'
+  const [fullscreenImage, setFullscreenImage] = useState(null); // URL for lightbox
+  const mediaRecorderRef = useRef(null);
+  const audioChunksRef = useRef([]);
 
   // API hooks
   const { data: initialMessagesData, isLoading: isLoadingMessages } = useGetChatMessagesQuery(chatId, { skip: !chatId });
@@ -52,11 +66,11 @@ function ChatDetail() {
     const timeString = date.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
 
     if (messageDate === today) return timeString;
-    if (messageDate === yesterday) return `Yesterday, ${timeString}`;
+    if (messageDate === yesterday) return `${t.yesterday}, ${timeString}`;
     return `${date.toLocaleDateString()}, ${timeString}`;
   };
 
-  const parseMessage = (m) => {
+  const parseMessage = useCallback((m) => {
     const sId = m.sender?._id || m.sender?.id || m.sender;
     const isMine = String(sId) === String(user?._id) || m.sender?.username === user?.username || m.sender === displayName;
     let sName = "Unknown";
@@ -68,12 +82,13 @@ function ChatDetail() {
     return {
       id: m._id || m.id,
       text: m.text || m.message || m.body,
+      type: m.type || (m.text?.startsWith('data:image') ? 'image' : m.text?.startsWith('data:audio') ? 'voice' : 'text'),
       sender: sName,
       senderId: sId,
       mine: isMine,
       time: m.time || m.createdAt || m.updatedAt || new Date().toISOString()
     };
-  };
+  }, [user?._id, user?.username, displayName]);
 
   useEffect(() => {
     if (initialMessagesData) {
@@ -82,7 +97,7 @@ function ChatDetail() {
         setMessages(msgs.map(parseMessage));
       }
     }
-  }, [initialMessagesData, user]);
+  }, [initialMessagesData, user, parseMessage]);
 
   useEffect(() => {
     messagesEndRef.current?.scrollIntoView({ behavior: "smooth" });
@@ -124,7 +139,6 @@ function ChatDetail() {
     }
 
     function handlePresence(data) {
-      // Assuming backend sends { users: [...] } or { count: n }
       if (data?.users) {
         setOnlineUsers(data.users);
         setPresence(data.users.length > 1 ? "online" : "offline");
@@ -136,13 +150,10 @@ function ChatDetail() {
     socket.on(SOCKET_EVENTS.receive, handleReceive);
     socket.on('message', handleReceive);
 
-    // Custom presence events
     socket.on('userJoined', () => {
       setPresence("online");
     });
     socket.on('userLeft', () => {
-      // Simple toggle or re-fetch if backend supports
-      // For now, if someone joins, it's online
     });
     socket.on('presence', handlePresence);
 
@@ -155,13 +166,16 @@ function ChatDetail() {
     };
   }, [chatId, token, user, parseMessage]);
 
-  function handleSend() {
-    const text = draft.trim();
+  function handleSend(mediaPayload = null) {
+    const text = mediaPayload?.[0] || pendingMedia || draft.trim();
     if (!text || !chatId) return;
+
+    const type = mediaPayload?.[1] || pendingMediaType || 'text';
 
     const payload = {
       chatId,
       text,
+      type,
       sender: user?._id || displayName,
       time: new Date().toISOString(),
     };
@@ -171,6 +185,7 @@ function ChatDetail() {
       {
         id: `optimistic-${Date.now()}`,
         text,
+        type: payload.type,
         sender: displayName,
         mine: true,
         time: payload.time,
@@ -179,7 +194,58 @@ function ChatDetail() {
 
     socketRef.current?.emit(SOCKET_EVENTS.send, payload);
     setDraft("");
+    setPendingMedia(null);
+    setPendingMediaType(null);
+    setShowEmojiPicker(false);
   }
+
+  const handleFileChange = (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+
+    const reader = new FileReader();
+    reader.onload = (event) => {
+      setPendingMedia(event.target.result);
+      setPendingMediaType('image');
+    };
+    reader.readAsDataURL(file);
+    e.target.value = null; // Reset
+  };
+
+  const startRecording = async () => {
+    try {
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      const mediaRecorder = new MediaRecorder(stream);
+      mediaRecorderRef.current = mediaRecorder;
+      audioChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (e) => {
+        if (e.data.size > 0) audioChunksRef.current.push(e.data);
+      };
+
+      mediaRecorder.onstop = () => {
+        const audioBlob = new Blob(audioChunksRef.current, { type: 'audio/webm' });
+        const reader = new FileReader();
+        reader.onload = (event) => {
+          handleSend([event.target.result, 'voice']);
+        };
+        reader.readAsDataURL(audioBlob);
+        stream.getTracks().forEach(track => track.stop());
+      };
+
+      mediaRecorder.start();
+      setIsRecording(true);
+    } catch (err) {
+      console.error("Mic access denied", err);
+    }
+  };
+
+  const stopRecording = () => {
+    if (mediaRecorderRef.current && isRecording) {
+      mediaRecorderRef.current.stop();
+      setIsRecording(false);
+    }
+  };
 
   async function handleInvite(e) {
     e.preventDefault();
@@ -188,10 +254,10 @@ function ChatDetail() {
       await inviteToChat({ chatId, payload: { username: inviteUsername.trim() } }).unwrap();
       setInviteUsername("");
       setShowInvite(false);
-      alert("Success");
+      alert(t.success);
     } catch (err) {
       console.error(err);
-      alert(err?.data?.message || err?.data?.error || "Failed to invite");
+      alert(err?.data?.message || err?.data?.error || t.failedToInvite);
     }
   }
 
@@ -211,7 +277,6 @@ function ChatDetail() {
 
   async function handleDelete(messageId, isEveryone = true) {
     try {
-      // If endpoint doesn't support 'for me', we'll treat both as everyone for now or just remove locally
       await deleteMessageApi({ chatId, messageId }).unwrap();
       setMessages(prev => prev.filter(m => m.id !== messageId));
       setDeleteModal({ show: false, messageId: null, isMine: false });
@@ -239,9 +304,9 @@ function ChatDetail() {
             ⬅
           </button>
           <div style={{ display: 'flex', flexDirection: 'column' }}>
-            <span>Chat: {searchParams.get("title") || chatId}</span>
+            <span>{searchParams.get("title") || chatId}</span>
             <span className={`${styles.status} ${presence === 'online' ? styles.online : styles.offline}`}>
-              {presence}
+              {presence === 'online' ? t.online : t.offline}
             </span>
           </div>
         </div>
@@ -251,23 +316,23 @@ function ChatDetail() {
               <input
                 autoFocus
                 type="text"
-                placeholder="Username..."
+                placeholder={`${t.username}...`}
                 value={inviteUsername}
                 onChange={e => setInviteUsername(e.target.value)}
                 className={styles.inviteInput}
               />
-              <button type="submit" disabled={isInviting} className={styles.inviteBtn}>Invite</button>
+              <button type="submit" disabled={isInviting} className={styles.inviteBtn}>{t.addMember}</button>
               <button type="button" onClick={() => setShowInvite(false)} className={styles.cancelBtn}>✕</button>
             </form>
           ) : (
-            <button onClick={() => setShowInvite(true)} className={styles.inviteBtn}>+ Add Member</button>
+            <button onClick={() => setShowInvite(true)} className={styles.inviteBtn}>+ {t.addMember}</button>
           )}
         </div>
       </header>
 
       <div className={styles.messages}>
         {messages.map((message) => {
-          const canEditOrDelete = message.mine || isAdmin;
+          const canEditOrDelete = (message.mine || isAdmin) && message.type === 'text';
 
           return (
             <div key={message.id} className={`${styles.messageWrapper} ${message.mine ? styles.mineWrapper : styles.otherWrapper}`}>
@@ -282,21 +347,21 @@ function ChatDetail() {
                       onChange={e => setEditText(e.target.value)}
                       className={styles.editInput}
                     />
-                    <button onClick={() => handleEditSubmit(message.id)} className={styles.saveBtn}>Save</button>
-                    <button onClick={() => setEditingMessageId(null)} className={styles.cancelEditBtn}>Cancel</button>
+                    <button onClick={() => handleEditSubmit(message.id)} className={styles.saveBtn}>{t.saveChanges}</button>
+                    <button onClick={() => setEditingMessageId(null)} className={styles.cancelEditBtn}>{t.cancel}</button>
                   </div>
                 ) : (
                   <div className={styles.messageContent}>
-                    <p className={styles.messageText}>{message.text}</p>
-                    {message.text.match(/\.(jpeg|jpg|gif|png|webp|svg)/i) && (
-                      <div className={styles.mediaWrapper}>
+                    {message.type === 'image' || message.text.startsWith('data:image') ? (
+                      <div className={styles.mediaWrapper} onClick={() => setFullscreenImage(message.text)}>
                         <img src={message.text} alt="attachment" className={styles.media} loading="lazy" />
                       </div>
-                    )}
-                    {message.text.match(/\.(mp4|webm|ogg|mov)/i) && (
-                      <div className={styles.mediaWrapper}>
-                        <video src={message.text} controls className={styles.media} />
+                    ) : message.type === 'voice' || message.text.startsWith('data:audio') ? (
+                      <div className={styles.audioWrapper}>
+                        <audio src={message.text} controls className={styles.audio} />
                       </div>
+                    ) : (
+                      <p className={styles.messageText}>{message.text}</p>
                     )}
                   </div>
                 )}
@@ -318,6 +383,17 @@ function ChatDetail() {
                     >🗑</button>
                   </div>
                 )}
+                {/* Delete button even for media */}
+                {!canEditOrDelete && (message.mine || isAdmin) && editingMessageId !== message.id && (
+                  <div className={styles.messageActions}>
+                    <button
+                      onClick={() => openDeleteModal(message.id, message.mine)}
+                      className={styles.actionBtn}
+                      title="Delete message"
+                    >🗑</button>
+                  </div>
+                )}
+
                 <span className={styles.timeLabel}>
                   {formatMessageTime(message.time)}
                 </span>
@@ -325,47 +401,108 @@ function ChatDetail() {
             </div>
           );
         })}
-        {isLoadingMessages && <div className={styles.loading}>Loading history...</div>}
+        {isLoadingMessages && <div className={styles.loading}>{t.chats}...</div>}
         <div ref={messagesEndRef} />
       </div>
 
-      <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className={styles.form}>
+      {pendingMedia && (
+        <div className={styles.previewArea}>
+          <div className={styles.previewContainer}>
+            {pendingMediaType === 'image' ? (
+              <img src={pendingMedia} alt="preview" className={styles.previewImage} />
+            ) : (
+              <div className={styles.voicePreview}>{t.voiceMessage}</div>
+            )}
+            <button className={styles.cancelPreview} onClick={() => { setPendingMedia(null); setPendingMediaType(null); }}>✕</button>
+          </div>
+        </div>
+      )}
+
+      <div className={styles.inputArea}>
         <input
-          value={draft}
-          onChange={(e) => setDraft(e.target.value)}
-          type="text"
-          placeholder="Write a message..."
-          className={styles.input}
+          type="file"
+          hidden
+          ref={fileInputRef}
+          accept="image/*"
+          onChange={handleFileChange}
         />
-        <button className={styles.button}>Send</button>
-      </form>
+        <button className={styles.attachBtn} onClick={() => fileInputRef.current?.click()}>
+          📎
+        </button>
+
+        <button
+          className={styles.emojiBtn}
+          onClick={() => setShowEmojiPicker(prev => !prev)}
+          type="button"
+        >
+          🙂
+        </button>
+
+        <form onSubmit={(e) => { e.preventDefault(); handleSend(); }} className={styles.form}>
+          <input
+            value={draft}
+            onChange={(e) => setDraft(e.target.value)}
+            type="text"
+            placeholder={t.writeMessage}
+            className={styles.input}
+          />
+          {draft.trim() || pendingMedia ? (
+            <button className={styles.sendButton} type="button" onClick={() => handleSend()}>
+              {pendingMedia ? t.send : "➔"}
+            </button>
+          ) : (
+            <button
+              type="button"
+              className={`${styles.micButton} ${isRecording ? styles.recording : ''}`}
+              onMouseDown={startRecording}
+              onMouseUp={stopRecording}
+              onMouseLeave={stopRecording}
+              onTouchStart={startRecording}
+              onTouchEnd={stopRecording}
+            >
+              🎤
+            </button>
+          )}
+        </form>
+      </div>
+
+      {showEmojiPicker && (
+        <div className={styles.emojiPickerContainer}>
+          <EmojiPicker
+            onEmojiClick={(emojiObject) => {
+              setDraft(prev => prev + emojiObject.emoji);
+            }}
+            theme="dark"
+          />
+        </div>
+      )}
 
       {/* Delete Confirmation Modal */}
       {deleteModal.show && (
         <div className={styles.modalOverlay} onClick={() => setDeleteModal({ show: false, messageId: null, isMine: false })}>
           <div className={styles.modalContent} onClick={e => e.stopPropagation()}>
-            <h3>Delete message?</h3>
-            <p>Select how you want to delete this message.</p>
+            <h3>{t.deleteConfirm}</h3>
+            <p>{t.deleteSub}</p>
             <div className={styles.modalActions}>
               <button
                 className={styles.modalBtn}
                 onClick={() => handleDelete(deleteModal.messageId, false)}
               >
-                Delete for me
+                {t.deleteForMe}
               </button>
               {deleteModal.isMine && (
                 <button
                   className={`${styles.modalBtn} ${styles.dangerBtn}`}
                   onClick={() => handleDelete(deleteModal.messageId, true)}
                 >
-                  Delete for everyone
+                  {t.deleteForEveryone}
                 </button>
               )}
               <button
                 className={styles.cancelLink}
                 onClick={() => setDeleteModal({ show: false, messageId: null, isMine: false })}
               >
-                Cancel
+                {t.cancel}
               </button>
             </div>
           </div>

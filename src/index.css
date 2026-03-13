@@ -13,6 +13,9 @@
   --danger-hover: #c62828;
   --chat-bg-color: #0f0f15;
   --chat-bg-pattern: url('https://web.telegram.org/a/chat-bg-pattern-dark.png');
+  --my-message-bg: var(--primary);
+  --my-message-text: #ffffff;
+  --my-message-time: rgba(255, 255, 255, 0.7);
 }
 
 [data-theme="light"] {
@@ -26,6 +29,10 @@
   --border: #e0e0e0;
   --chat-bg-color: #dbddd3; /* Milky telegram color */
   --chat-bg-pattern: url('https://web.telegram.org/a/chat-bg-pattern-light.png');
+  --sidebar-header-bg: #0e1621; /* High-fidelity telegram dark blue */
+  --my-message-bg: #effdde;    /* Official Telegram light green bubble */
+  --my-message-text: #050510;
+  --my-message-time: #4f6e43;   /* Muted green for time on bubble */
 }
 
 * {
